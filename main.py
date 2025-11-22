@@ -1,5 +1,4 @@
 import streamlit as st
-# CHANGED: Using Google Gemini now
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from dotenv import load_dotenv
@@ -11,13 +10,9 @@ load_dotenv()
 # 2. Page Config
 st.set_page_config(page_title="Eightfold AI Interview Partner", page_icon="🎤")
 
-# 3. Initialize the "Brain" (Google Gemini)
-# We use 'gemini-1.5-flash' because it is fast and free
-try:
-    chat = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.7)
-except Exception as e:
-    st.error("Error initializing Google Gemini. Check your GOOGLE_API_KEY in the .env file.")
-    st.stop()
+# 3. Initialize the "Brain"
+# We use the model you confirmed exists: gemini-2.0-flash
+chat = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7)
 
 # 4. Define the System Persona
 system_prompt = """
@@ -34,7 +29,11 @@ Guidelines:
 
 # 5. Manage Session State (Memory)
 if "messages" not in st.session_state:
-    st.session_state.messages = [SystemMessage(content=system_prompt)]
+    # We add the System Prompt AND the First Question immediately
+    st.session_state.messages = [
+        SystemMessage(content=system_prompt),
+        AIMessage(content="Hello! I am your Eightfold AI Interviewer. Are you ready to begin? Please briefly introduce yourself.")
+    ]
 
 # 6. Sidebar
 with st.sidebar:
@@ -48,7 +47,6 @@ with st.sidebar:
 st.title(f"Mock Interview: {role}")
 st.markdown("---")
 
-# Filter out system message for display
 messages_to_display = [m for m in st.session_state.messages if not isinstance(m, SystemMessage)]
 
 for msg in messages_to_display:
@@ -63,21 +61,13 @@ for msg in messages_to_display:
 user_input = st.chat_input("Type your answer here...")
 
 if user_input:
-    # Add user message to state
     st.session_state.messages.append(HumanMessage(content=user_input))
-    
-    # Display user message immediately
     with st.chat_message("user"):
         st.write(user_input)
 
-    # Generate response
     with st.spinner("Interviewer is thinking..."):
-        try:
-            response = chat.invoke(st.session_state.messages)
-            # Add AI response to state
-            st.session_state.messages.append(response)
-            # Display AI response
-            with st.chat_message("assistant"):
-                st.write(response.content)
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+        response = chat.invoke(st.session_state.messages)
+    
+    st.session_state.messages.append(response)
+    with st.chat_message("assistant"):
+        st.write(response.content)
