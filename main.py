@@ -19,7 +19,6 @@ chat = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7)
 # 4. Helper Function: Text to Speech
 def text_to_speech(text):
     try:
-        # CLEANING: Remove Markdown symbols
         clean_text = text.replace("*", "").replace("#", "").replace("- ", "")
         tts = gTTS(text=clean_text, lang='en', tld='co.uk')
         audio_fp = io.BytesIO()
@@ -30,38 +29,50 @@ def text_to_speech(text):
         st.error(f"Audio Error: {e}")
         return None
 
-# 5. Define the System Persona (MERGED VERSION)
-system_prompt = """
+# 5. Sidebar & Role Logic
+with st.sidebar:
+    st.header("Interview Settings")
+    role = st.selectbox("Choose Role", ["Software Engineer", "Product Manager", "Data Scientist"])
+    
+    # Define topics based on role
+    role_topics = {
+        "Software Engineer": "Java, Python, Data Structures, Algorithms, System Design, Databases, OOPS, Operating Systems.",
+        "Product Manager": "Product Strategy, User Empathy, Metrics (KPIs), Prioritization, GTM Strategy. (NO CODING QUESTIONS)",
+        "Data Scientist": "Machine Learning, Statistics, SQL, Model Evaluation, A/B Testing."
+    }
+    current_topics = role_topics[role]
+
+# 6. Dynamic System Persona
+system_prompt = f"""
 You are an expert Technical Interviewer at Eightfold AI. 
-Your goal is to conduct a mock interview for a 'Software Engineer' role.
+Your goal is to conduct a mock interview for a '{role}' role.
 
 CORE BEHAVIORS:
-1.  **Strict Persona:** You are an interviewer. Do not break character. If the user asks about the weather or sports, politely steer them back to the interview.
-2.  **Adaptability:** * If the user is **Confused** or stuck: Be patient. Offer a hint or simplify the question.
-    * If the user is **Efficient** (short answers): Be concise. Move fast. Skip the "Great answer!" fluff.
-    * If the user is **Chatty/Off-topic**: Briefly acknowledge, then firmly bring the focus back to the technical topic.
-3.  **Questioning Strategy:**
-    * Start by asking the user to introduce themselves.
-    * Ask one technical question at a time (Focus on Java/Python, DSA, DBMS, OS, OOPS, System Design).
-    * **Agentic Drill-Down:** If an answer is vague, you MUST ask a follow-up. (e.g., "You mentioned HashMap, but how does it handle collisions internally?")
+1.  **Strict Persona:** You are an interviewer. Do not break character.
+2.  **Role-Specific Focus:** * You must ONLY ask questions relevant to: {current_topics}.
+    * If the role is **Product Manager**, DO NOT ask about code implementation or databases. Focus on product sense.
+    * If the role is **Data Scientist**, focus on stats/ML, not app development.
+3.  **Adaptability:** * **Confused User:** Offer a hint.
+    * **Efficient User:** Move fast.
+    * **Chatty User:** Steer back to the topic.
 
 DECIDING WHEN TO STOP (Fuzzy Logic):
-* You have autonomy. Aim to ask between 3 to 5 main technical questions.
-* Once you feel you have assessed the candidate's skills sufficiently, **STOP asking questions.**
+* Aim to ask between 3 to 5 main questions.
+* Once you have assessed the candidate, **STOP asking questions.**
 * **IMMEDIATELY** transition to the closing phase.
 
 THE CLOSING PHASE (Automatic Feedback):
 * When you decide to stop:
-    1.  Thank the candidate for attending.
-    2.  **IMMEDIATELY** provide a detailed feedback report in this structure:
-        * **💪 Key Strengths:** (Bullet points)
-        * **⚠️ Weaknesses:** (Bullet points)
-        * **🚀 Areas for Improvement:** (Technical advice)
-        * **⭐ Overall Rating:** (Score out of 10)
-    3.  Do not ask "Do you have any questions?" or wait for further input.
+    1.  Thank the candidate.
+    2.  **IMMEDIATELY** provide a detailed feedback report:
+        * **💪 Key Strengths**
+        * **⚠️ Weaknesses**
+        * **🚀 Areas for Improvement**
+        * **⭐ Overall Rating** (Score out of 10)
+    3.  Do not ask further questions.
 """
 
-# 6. Session State Management
+# 7. Session State Management
 if "messages" not in st.session_state:
     st.session_state.messages = [SystemMessage(content=system_prompt)]
 
@@ -71,13 +82,10 @@ if "interview_active" not in st.session_state:
 if "last_played_index" not in st.session_state:
     st.session_state.last_played_index = -1
 
-# 7. Sidebar (UPDATED)
+# Sidebar Reset Button
 with st.sidebar:
-    st.header("Interview Settings")
-    role = st.selectbox("Choose Role", ["Software Engineer", "Product Manager", "Data Scientist"])
-    
-    # The Button you requested
     if st.button("End/Restart Interview"):
+        # Reset everything and load the NEW role prompt
         st.session_state.messages = [SystemMessage(content=system_prompt)]
         st.session_state.interview_active = False
         st.session_state.last_played_index = -1
@@ -89,9 +97,13 @@ st.markdown("---")
 
 # STATE 1: Interview hasn't started yet
 if not st.session_state.interview_active:
-    st.info("👋 Welcome! Make sure your audio is on.")
+    st.info(f"👋 Welcome! Ready to practice for {role}?")
     if st.button("Start Interview 🚀", type="primary"):
         st.session_state.interview_active = True
+        
+        # CRITICAL FIX: Force update the System Message to match the currently selected role
+        # This ensures if you switched from SWE to PM, the brain updates immediately.
+        st.session_state.messages[0] = SystemMessage(content=system_prompt)
         
         # Generate Welcome Message
         greeting_text = f"Hello! I am your Eightfold AI Interviewer for the {role} role. Are you ready? Please briefly introduce yourself."
