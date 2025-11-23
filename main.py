@@ -39,8 +39,13 @@ if "messages" not in st.session_state:
 with st.sidebar:
     st.header("Interview Settings")
     role = st.selectbox("Choose Role", ["Software Engineer", "Product Manager", "Data Scientist"])
+    
     if st.button("Clear/Restart"):
-        st.session_state.messages = [SystemMessage(content=system_prompt)]
+        # RESET BOTH: The System Prompt (Instruction) AND The Greeting (Visible Message)
+        st.session_state.messages = [
+            SystemMessage(content=system_prompt),
+            AIMessage(content="Hello! I am your Eightfold AI Interviewer. Are you ready to begin? Please briefly introduce yourself.")
+        ]
         st.rerun()
 
 # 7. Display Chat History
