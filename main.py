@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from streamlit_mic_recorder import speech_to_text
 from gtts import gTTS
 import io
-import re  # Imported for text cleaning
 
 # 1. Load Environment Variables
 load_dotenv()
@@ -17,13 +16,11 @@ st.set_page_config(page_title="Eightfold AI Interview Partner", page_icon="🎤"
 # 3. Initialize the "Brain"
 chat = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7)
 
-# 4. Helper Function: Text to Speech (Now with Cleaning!)
+# 4. Helper Function: Text to Speech
 def text_to_speech(text):
     try:
-        # CLEANING STEP: Remove Markdown symbols (*, #, etc) from audio only
+        # CLEANING: Remove Markdown symbols
         clean_text = text.replace("*", "").replace("#", "").replace("- ", "")
-        
-        # Use British accent (tld='co.uk') for professional vibe
         tts = gTTS(text=clean_text, lang='en', tld='co.uk')
         audio_fp = io.BytesIO()
         tts.write_to_fp(audio_fp)
@@ -33,18 +30,35 @@ def text_to_speech(text):
         st.error(f"Audio Error: {e}")
         return None
 
-# 5. Define the System Persona
+# 5. Define the System Persona (MERGED VERSION)
 system_prompt = """
 You are an expert Technical Interviewer at Eightfold AI. 
 Your goal is to conduct a mock interview for a 'Software Engineer' role.
 
-Guidelines:
-1. Start by asking the user to introduce themselves.
-2. Ask one question at a time.
-3. Dig deeper! If the user gives a vague answer, ask a follow-up clarifying question.
-4. Be professional but encouraging.
-5. If the user says "END INTERVIEW", stop asking questions and provide detailed feedback (Strengths, Weaknesses, Rating /10).
-6. Keep your responses concise (under 3 sentences) so the conversation flows naturally.
+CORE BEHAVIORS:
+1.  **Strict Persona:** You are an interviewer. Do not break character. If the user asks about the weather or sports, politely steer them back to the interview.
+2.  **Adaptability:** * If the user is **Confused** or stuck: Be patient. Offer a hint or simplify the question.
+    * If the user is **Efficient** (short answers): Be concise. Move fast. Skip the "Great answer!" fluff.
+    * If the user is **Chatty/Off-topic**: Briefly acknowledge, then firmly bring the focus back to the technical topic.
+3.  **Questioning Strategy:**
+    * Start by asking the user to introduce themselves.
+    * Ask one technical question at a time (Focus on Java/Python, DSA, DBMS, OS, OOPS, System Design).
+    * **Agentic Drill-Down:** If an answer is vague, you MUST ask a follow-up. (e.g., "You mentioned HashMap, but how does it handle collisions internally?")
+
+DECIDING WHEN TO STOP (Fuzzy Logic):
+* You have autonomy. Aim to ask between 3 to 5 main technical questions.
+* Once you feel you have assessed the candidate's skills sufficiently, **STOP asking questions.**
+* **IMMEDIATELY** transition to the closing phase.
+
+THE CLOSING PHASE (Automatic Feedback):
+* When you decide to stop:
+    1.  Thank the candidate for attending.
+    2.  **IMMEDIATELY** provide a detailed feedback report in this structure:
+        * **💪 Key Strengths:** (Bullet points)
+        * **⚠️ Weaknesses:** (Bullet points)
+        * **🚀 Areas for Improvement:** (Technical advice)
+        * **⭐ Overall Rating:** (Score out of 10)
+    3.  Do not ask "Do you have any questions?" or wait for further input.
 """
 
 # 6. Session State Management
@@ -57,11 +71,12 @@ if "interview_active" not in st.session_state:
 if "last_played_index" not in st.session_state:
     st.session_state.last_played_index = -1
 
-# 7. Sidebar
+# 7. Sidebar (UPDATED)
 with st.sidebar:
     st.header("Interview Settings")
     role = st.selectbox("Choose Role", ["Software Engineer", "Product Manager", "Data Scientist"])
     
+    # The Button you requested
     if st.button("End/Restart Interview"):
         st.session_state.messages = [SystemMessage(content=system_prompt)]
         st.session_state.interview_active = False
@@ -78,10 +93,9 @@ if not st.session_state.interview_active:
     if st.button("Start Interview 🚀", type="primary"):
         st.session_state.interview_active = True
         
-        # Generate the Welcome Message
+        # Generate Welcome Message
         greeting_text = f"Hello! I am your Eightfold AI Interviewer for the {role} role. Are you ready? Please briefly introduce yourself."
         st.session_state.messages.append(AIMessage(content=greeting_text))
-        
         st.session_state.last_played_index = -1 
         st.rerun()
 
@@ -96,12 +110,11 @@ else:
                 st.write(msg.content)
         elif isinstance(msg, AIMessage):
             with st.chat_message("assistant"):
-                st.write(msg.content) # This keeps the bold text on screen
+                st.write(msg.content)
                 
                 # AUDIO LOGIC
                 if i == len(messages_to_display) - 1:
                     if st.session_state.last_played_index != i:
-                        # The cleaner is inside text_to_speech function
                         audio_bytes = text_to_speech(msg.content)
                         if audio_bytes:
                             st.audio(audio_bytes, format="audio/mp3", autoplay=True)
@@ -116,14 +129,8 @@ else:
             text_input = st.chat_input("Type your answer here...")
         
         with col2:
-            # Voice Input
             voice_text = speech_to_text(
-                language='en',
-                start_prompt="🎤",
-                stop_prompt="🛑",
-                just_once=True,
-                use_container_width=True,
-                key='STT'
+                language='en', start_prompt="🎤", stop_prompt="🛑", just_once=True, use_container_width=True, key='STT'
             )
 
     # C. Handle Logic
