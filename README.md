@@ -10,25 +10,35 @@ Unlike standard chatbots that simply answer questions, this agent acts as a stri
 
 This section documents the technical choices made to maximize Conversational Quality and Agentic Behavior, as per the assignment rubric.
 
-1. Choice of LLM: Google Gemini 2.0 Flash
+1. Language Choice: Why Python over Java?
+
+Reasoning:I strategically chose **Python** for this assignment for three specific reasons:
+
+`The AI Ecosystem:` The Generative AI stack (LangChain, Google Generative AI SDKs) is "Python-first." While Java wrappers exist, the Python libraries are more mature, better documented, and offer wider feature support.
+
+`Rapid Prototyping Velocity:` Python's concise syntax allowed me to focus on *logic* and *conversation flow* rather than boilerplate code. Given the tight deadline, this was crucial for iterating on the "Agentic" behaviors.
+
+`Streamlit Capabilities:` Building this specific "Single Page Application" architecture in Java would have required a separate frontend (e.g., React) and a backend (e.g., Spring Boot). Python's **Streamlit** library allowed me to build the UI, Voice Processing, and LLM Logic in a single, cohesive codebase, significantly reducing architectural complexity.
+
+2. Choice of LLM: Google Gemini 2.0 Flash
 
 Decision: I chose gemini-2.0-flash over standard GPT-3.5 or Gemini Pro models.
 
 Reasoning (Technical Implementation): Voice-based interfaces require sub-second latency. Standard models often introduce a 2-3 second delay, which breaks the immersion of a mock interview. Gemini 2.0 Flash provides the optimal balance of reasoning capability and speed, ensuring the user doesn't sit in awkward silence.
 
-2. "Fuzzy Logic" vs. Rigid Counters
+3. "Fuzzy Logic" vs. Rigid Counters
 
 Decision: Instead of hard-coding if questions_asked == 3: stop, I instructed the agent to "Ask between 3 to 5 questions and decide when to stop based on the candidate's answers."
 
 Reasoning (Agentic Behavior): A real human interviewer doesn't stick to a strict counter. If a candidate gives a brilliant answer, they might move on. If the answer is weak, they dig deeper. This "Fuzzy Logic" demonstrates true agentic autonomy rather than simple procedural scripting.
 
-3. Dynamic System Prompt Injection
+4. Dynamic System Prompt Injection
 
 Decision: The System Prompt is not static. When the user selects a role (e.g., "Product Manager"), the prompt instantly overwrites itself with role-specific constraints (e.g., "Focus on Metrics, do not ask coding questions").
 
 Reasoning (Intelligence & Adaptability): A generic bot asking a Product Manager to "invert a binary tree" would be a failure of intelligence. By forcing a context switch in the Session State, the agent demonstrates high adaptability to different user personas.
 
-4. Hybrid Voice-Text Interface
+5. Hybrid Voice-Text Interface
 
 Decision: I implemented streamlit-mic-recorder for input and gTTS (Google Text-to-Speech) for output, but kept the text chat visible.
 
